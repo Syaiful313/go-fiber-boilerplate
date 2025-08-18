@@ -53,3 +53,13 @@ build-errors.log
 # Air
 tmp/
 
+# Archive files and installers
+*.tar.gz
+*.zip
+*.rar
+*.7z
+go*.tar.gz
+
+# Docker volumes data
+/postgres-data/
+/docker-data/
