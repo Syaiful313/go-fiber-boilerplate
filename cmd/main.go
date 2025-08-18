@@ -6,8 +6,8 @@ import (
 
 	"go-fiber-boilerplate/config"
 	"go-fiber-boilerplate/database"
-	"go-fiber-boilerplate/middleware"
-	"go-fiber-boilerplate/routes"
+	"go-fiber-boilerplate/internal/middleware"
+	"go-fiber-boilerplate/internal/routes"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"

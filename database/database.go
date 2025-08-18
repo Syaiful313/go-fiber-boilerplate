@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"go-fiber-boilerplate/config"
-	"go-fiber-boilerplate/models"
+	"go-fiber-boilerplate/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
