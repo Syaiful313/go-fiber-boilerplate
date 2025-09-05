@@ -1,60 +1,74 @@
-# Go Fiber Boilerplate
+# Go Fiber API Boilerplate
 
-Boilerplate untuk membangun RESTful API menggunakan Go Fiber, GORM, dan PostgreSQL. Proyek ini merupakan migrasi dari Express Prisma Boilerplate ke teknologi Go.
+Template RESTful API menggunakan Go Fiber dengan fitur lengkap untuk pengembangan aplikasi modern. Proyek ini menyediakan struktur yang bersih dan scalable dengan best practices untuk API development.
 
-## Fitur
+## ✨ Fitur
 
 - 🚀 **Go Fiber** - Framework web yang cepat dan minimalis
 - 🗄️ **GORM** - ORM yang powerful untuk Go
-- 🐘 **PostgreSQL** - Database relasional yang robust
-- 🔐 **JWT Authentication** - Sistem autentikasi yang aman
-- 🔒 **Password Hashing** - Menggunakan bcrypt
-- 📝 **CRUD Operations** - Operasi Create, Read, Update, Delete
-- 🐳 **Docker Support** - Containerization dengan Docker Compose
+- 🐘 **PostgreSQL** - Database relasional dengan Docker support
+- 🔐 **JWT Authentication** - Sistem autentikasi yang aman dengan refresh token
+- 🔒 **Password Security** - Hashing menggunakan bcrypt
+- 📧 **Email System** - Forgot password dengan SMTP
+- 📁 **File Upload** - Upload gambar ke Cloudinary
+- 🛡️ **Middleware** - CORS, Authentication, Error Handling, File Upload
+- 🐳 **Docker Ready** - Development dengan Docker Compose
 - 🔄 **Hot Reload** - Development dengan Air
-- 📋 **Middleware** - CORS, Authentication, Error Handling
-- 🧪 **Testing Ready** - Struktur untuk unit dan integration testing
+- 📊 **Clean Architecture** - Struktur yang terorganisir (Controllers, Services, Models)
 
-## Struktur Proyek
+## 🏗️ Struktur Proyek
 
 ```
 go-fiber-boilerplate/
-├── cmd/                    # Entry point aplikasi
+├── cmd/                           # Entry point aplikasi
 │   └── main.go
-├── config/                 # Konfigurasi aplikasi
+├── config/                        # Konfigurasi aplikasi
 │   └── config.go
-├── database/              # Konfigurasi database
+├── database/                      # Database setup
 │   └── database.go
-├── handlers/              # HTTP handlers
-│   ├── auth.go
-│   └── sample.go
-├── middleware/            # Middleware functions
-│   ├── auth.go
-│   ├── cors.go
-│   └── error.go
-├── models/               # Data models
-│   ├── user.go
-│   └── sample.go
-├── routes/               # Route definitions
-│   └── routes.go
-├── utils/                # Utility functions
+├── internal/
+│   ├── controllers/              # HTTP handlers
+│   │   ├── auth_controller.go
+│   │   └── sample_controller.go
+│   ├── middlewares/              # Middleware functions
+│   │   ├── auth_middleware.go
+│   │   ├── cors_middleware.go
+│   │   ├── error_middleware.go
+│   │   └── uploader_middleware.go
+│   ├── models/                   # Data models & DTOs
+│   │   ├── user.go
+│   │   └── sample.go
+│   ├── routes/                   # Route definitions
+│   │   ├── routes.go
+│   │   ├── auth_router.go
+│   │   └── sample_router.go
+│   └── services/                 # Business logic
+│       ├── auth_service.go
+│       ├── sample_service.go
+│       └── cloudinary.service.go
+├── pkg/                          # Shared packages
+│   └── response/
+│       └── response.go
+├── utils/                        # Utility functions
 │   ├── jwt.go
-│   └── password.go
-├── .env.example          # Environment variables template
-├── docker-compose.yml    # Docker configuration
-├── Makefile             # Build automation
+│   ├── password.go
+│   ├── email.go
+│   └── token.go
+├── .env.example                  # Environment template
+├── docker-compose.yml            # Docker services
+├── Makefile                      # Build automation
 └── README.md
 ```
 
-## Instalasi
+## 🚀 Quick Start
 
-### Prasyarat
+### Prerequisites
 
-- Go 1.21 atau lebih baru
-- Docker dan Docker Compose
-- Make (opsional, untuk menggunakan Makefile)
+- Go 1.21+
+- Docker & Docker Compose
+- Make (optional)
 
-### Langkah Instalasi
+### Installation
 
 1. **Clone repository:**
    ```bash
@@ -62,96 +76,108 @@ go-fiber-boilerplate/
    cd go-fiber-boilerplate
    ```
 
-2. **Install dependencies:**
+2. **Setup environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env dengan konfigurasi Anda
+   ```
+
+3. **Start database:**
+   ```bash
+   make docker-up
+   # atau
+   docker-compose up -d
+   ```
+
+4. **Install dependencies:**
    ```bash
    go mod download
    ```
 
-3. **Setup environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env sesuai dengan konfigurasi Anda
-   ```
-
-4. **Start database dengan Docker:**
-   ```bash
-   docker-compose up -d
-   ```
-
 5. **Run aplikasi:**
    ```bash
-   go run cmd/main.go
+   make dev
+   # atau
+   air
    ```
 
-   Atau menggunakan Makefile:
-   ```bash
-   make start
-   ```
+Server akan berjalan di `http://localhost:8000`
 
-## Environment Variables
-
-Buat file `.env` berdasarkan `.env.example`:
+## ⚙️ Environment Variables
 
 ```env
-# Database Configuration
+# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=admin
 DB_NAME=go_fiber_db
 
-# Server Configuration
+# Server
 PORT=8000
-
-# JWT Configuration
 JWT_SECRET=your_jwt_secret_key_here
+
+# CORS
+CORS_ALLOWED_ORIGINS=*
+CORS_ALLOW_CREDENTIALS=false
+
+# Email (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+FROM_EMAIL=noreply@yourapp.com
+
+# Frontend URL (untuk reset password)
+FRONTEND_URL=http://localhost:3000
+
+# Cloudinary (untuk upload gambar)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-## API Endpoints
-
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/auth/register` | Register user baru |
-| POST | `/api/v1/auth/login` | Login user |
-| GET | `/api/v1/profile` | Get user profile (protected) |
-
-### Samples
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/samples` | Get all samples (protected) |
-| GET | `/api/v1/samples/:id` | Get sample by ID (protected) |
-| POST | `/api/v1/samples` | Create new sample (protected) |
-| PUT | `/api/v1/samples/:id` | Update sample (protected) |
-| DELETE | `/api/v1/samples/:id` | Delete sample (protected) |
+## 📋 API Endpoints
 
 ### Health Check
+```
+GET /api/health
+```
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/health` | Health check endpoint |
+### Authentication
+```
+POST /auth/register          # Register user baru
+POST /auth/login             # Login user
+POST /auth/forgot-password   # Forgot password
+POST /auth/reset-password    # Reset password
+```
 
-## Contoh Request
+### Samples (Protected)
+```
+GET    /samples              # Get all samples (pagination)
+GET    /samples/:id          # Get sample by ID
+POST   /samples              # Create new sample
+PUT    /samples/:id          # Update sample
+DELETE /samples/:id          # Delete sample
+```
+
+## 📝 Request Examples
 
 ### Register User
-
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/register \
+curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
     "password": "password123",
-    "firstName": "John",
-    "lastName": "Doe"
+    "first_name": "John",
+    "last_name": "Doe"
   }'
 ```
 
 ### Login
-
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
+curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -160,9 +186,8 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 ```
 
 ### Create Sample (dengan token)
-
 ```bash
-curl -X POST http://localhost:8000/api/v1/samples \
+curl -X POST http://localhost:8000/samples \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
@@ -171,117 +196,168 @@ curl -X POST http://localhost:8000/api/v1/samples \
   }'
 ```
 
-## Development
-
-### Hot Reload dengan Air
-
-1. **Install Air:**
-   ```bash
-   go install github.com/cosmtrek/air@latest
-   ```
-
-2. **Run dengan hot reload:**
-   ```bash
-   air
-   ```
-
-   Atau menggunakan Makefile:
-   ```bash
-   make dev
-   ```
-
-### Makefile Commands
-
+### Forgot Password
 ```bash
-make build          # Build aplikasi
-make run            # Run aplikasi
-make dev            # Run dengan hot reload
-make test           # Run tests
-make clean          # Clean build artifacts
-make docker-up      # Start Docker containers
-make docker-down    # Stop Docker containers
-make setup          # Full development setup
+curl -X POST http://localhost:8000/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
 ```
 
-## Testing
+### Reset Password
+```bash
+curl -X POST http://localhost:8000/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "reset_token_from_email",
+    "new_password": "newpassword123"
+  }'
+```
+
+## 🛠️ Development Commands
 
 ```bash
-# Run all tests
+# Build aplikasi
+make build
+
+# Run aplikasi
+make run
+
+# Development dengan hot reload
+make dev
+
+# Run tests
+make test
+
+# Start Docker services
+make docker-up
+
+# Stop Docker services
+make docker-down
+
+# Clean build artifacts
+make clean
+
+# Full setup untuk development
+make setup
+```
+
+## 🔧 Features Detail
+
+### Authentication System
+- JWT-based authentication
+- Password hashing dengan bcrypt
+- Email verification untuk forgot password
+- Reset password dengan secure token
+
+### File Upload System
+- Upload gambar ke Cloudinary
+- Validasi file type dan size
+- Multiple image variants (thumbnail, small, medium, large)
+- Secure file handling
+
+### Database Features
+- Auto migration
+- Soft delete support
+- Relationship management
+- Pagination support
+
+### Middleware
+- **CORS**: Configurable cross-origin resource sharing
+- **Auth**: JWT token validation
+- **Error**: Centralized error handling
+- **Upload**: File upload validation dan processing
+
+### Email System
+- SMTP support dengan template HTML
+- Forgot password email
+- Password reset confirmation email
+
+## 🐳 Docker Support
+
+Development environment dengan PostgreSQL dan Adminer:
+
+```yaml
+# docker-compose.yml menyediakan:
+- PostgreSQL database (port 5432)
+- PostgreSQL test database (port 5433) 
+- Adminer web interface (port 8080)
+```
+
+Access database via Adminer: `http://localhost:8080`
+
+## 🧪 Testing
+
+```bash
+# Run semua tests
 go test -v ./...
 
-# Atau menggunakan Makefile
-make test
+# Run tests dengan coverage
+go test -v -cover ./...
+
+# Run specific test
+go test -v ./internal/services/
 ```
 
-## Docker
+## 📚 Architecture
 
-### Start Services
+Proyek ini menggunakan **Clean Architecture** dengan separation of concerns:
 
-```bash
-docker-compose up -d
+- **Controllers**: Handle HTTP requests/responses
+- **Services**: Business logic dan validations
+- **Models**: Data structures dan database models
+- **Utils**: Reusable utility functions
+- **Middleware**: Cross-cutting concerns
+- **Config**: Application configuration
+
+## 🔄 Migration dari Express
+
+Template ini merupakan equivalent dari Express.js boilerplate dengan keuntungan:
+
+- **Performance**: Go Fiber lebih cepat dari Express
+- **Memory**: Konsumsi memory yang efisien
+- **Concurrency**: Built-in goroutines
+- **Deployment**: Single binary executable
+- **Type Safety**: Static typing
+
+## 🎯 Best Practices
+
+- Environment-based configuration
+- Proper error handling dengan custom error types
+- Structured logging
+- Input validation
+- Security headers
+- Database connection pooling
+- Graceful shutdown handling
+
+## 📄 Response Format
+
+API menggunakan consistent response format:
+
+```json
+{
+  "message": "Success message",
+  "data": {
+    // response data
+  }
+}
 ```
 
-### Stop Services
-
-```bash
-docker-compose down
+Error responses:
+```json
+{
+  "error": "Error message"
+}
 ```
 
-### Database Access
+## 🚦 Status Codes
 
-- **Host:** localhost
-- **Port:** 5432
-- **Database:** go_fiber_db
-- **Username:** postgres
-- **Password:** admin
-
-## Migrasi dari Express Prisma
-
-Proyek ini merupakan migrasi dari Express Prisma Boilerplate dengan perubahan berikut:
-
-### Teknologi Stack
-
-| Express Prisma | Go Fiber |
-|----------------|----------|
-| Node.js + Express | Go + Fiber |
-| Prisma ORM | GORM |
-| TypeScript | Go |
-| npm/yarn | Go modules |
-
-### Fitur yang Dipertahankan
-
-- ✅ JWT Authentication
-- ✅ Password Hashing
-- ✅ CRUD Operations
-- ✅ Database Relations
-- ✅ Middleware Support
-- ✅ Environment Configuration
-- ✅ Docker Support
-- ✅ Error Handling
-
-### Keuntungan Migrasi
-
-- **Performance:** Go Fiber lebih cepat dibanding Express
-- **Memory Usage:** Konsumsi memory yang lebih efisien
-- **Concurrency:** Built-in goroutines untuk concurrent processing
-- **Deployment:** Single binary deployment
-- **Type Safety:** Static typing tanpa runtime overhead
-
-## Contributing
-
-1. Fork repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-## Contact
-
-Your Name - your.email@example.com
-
-Project Link: [https://github.com/yourusername/go-fiber-boilerplate](https://github.com/yourusername/go-fiber-boilerplate)
-
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Not Found
+- `409` - Conflict
+- `500` - Internal Server Error
