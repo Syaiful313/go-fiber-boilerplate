@@ -20,7 +20,7 @@ func ConnectDB(cfg *config.Config) {
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent), // Mengubah level log menjadi Silent
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 
 	if err != nil {
@@ -29,7 +29,6 @@ func ConnectDB(cfg *config.Config) {
 
 	log.Println("Database connected successfully")
 
-	// Auto migrate the schema
 	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Sample{},
@@ -45,4 +44,3 @@ func ConnectDB(cfg *config.Config) {
 func GetDB() *gorm.DB {
 	return DB
 }
-

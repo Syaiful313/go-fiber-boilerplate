@@ -1,4 +1,4 @@
-package middleware
+package middlewares
 
 import (
 	"strings"
@@ -33,7 +33,6 @@ func AuthMiddleware(cfg *config.Config) fiber.Handler {
 			})
 		}
 
-		// Store user info in context
 		c.Locals("userID", claims.UserID)
 		c.Locals("email", claims.Email)
 

@@ -6,7 +6,7 @@ import (
 
 	"go-fiber-boilerplate/config"
 	"go-fiber-boilerplate/database"
-	"go-fiber-boilerplate/internal/middleware"
+	"go-fiber-boilerplate/internal/middlewares"
 	"go-fiber-boilerplate/internal/routes"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,28 +15,21 @@ import (
 )
 
 func main() {
-	// Load configuration
 	cfg := config.LoadConfig()
 
-	// Connect to database
 	database.ConnectDB(cfg)
 
-	// Create Fiber app
 	app := fiber.New(fiber.Config{
-		ErrorHandler: middleware.ErrorHandler,
-		DisableStartupMessage: true, // Menonaktifkan pesan startup default Fiber
+		ErrorHandler:          middlewares.ErrorHandler,
+		DisableStartupMessage: true,
 	})
 
-	// Middleware
 	app.Use(logger.New())
 	app.Use(recover.New())
-	app.Use(middleware.CORSMiddleware(cfg))
+	app.Use(middlewares.CORSMiddleware(cfg))
 
-	// Setup routes
 	routes.SetupRoutes(app, cfg)
 
-	// Start server
-	fmt.Printf("  ➜  [API] Local:   http://localhost:%s\n", cfg.Port) // Mencetak URL lokal saja
+	fmt.Printf("  ➜  [API] Local:   http://localhost:%s\n", cfg.Port)
 	log.Fatal(app.Listen("0.0.0.0:" + cfg.Port))
 }
-
