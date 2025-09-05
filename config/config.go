@@ -17,20 +17,18 @@ type Config struct {
 	JWTSecret        string
 	AllowedOrigins   string
 	AllowCredentials bool
-	
-	// Email configuration
 	SMTPHost     string
 	SMTPPort     string
 	SMTPUsername string
 	SMTPPassword string
 	FromEmail    string
-	
-	// Frontend URL for reset password links
 	FrontendURL string
+	CloudinaryCloudName string
+	CloudinaryAPIKey    string
+	CloudinaryAPISecret string
 }
 
 func LoadConfig() *Config {
-	// Load .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
@@ -47,16 +45,15 @@ func LoadConfig() *Config {
 		JWTSecret:        getEnv("JWT_SECRET", "default_secret"),
 		AllowedOrigins:   getEnv("CORS_ALLOWED_ORIGINS", "*"),
 		AllowCredentials: allowCredentials,
-		
-		// Email configuration
 		SMTPHost:     getEnv("SMTP_HOST", "smtp.gmail.com"),
 		SMTPPort:     getEnv("SMTP_PORT", "587"),
 		SMTPUsername: getEnv("SMTP_USERNAME", ""),
 		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
 		FromEmail:    getEnv("FROM_EMAIL", "noreply@example.com"),
-		
-		// Frontend URL
-		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:8000"),
+		CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
+		CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
+		CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),
 	}
 }
 
@@ -66,4 +63,3 @@ func getEnv(key, defaultValue string) string {
 	}
 	return defaultValue
 }
-
