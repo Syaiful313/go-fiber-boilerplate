@@ -6,6 +6,7 @@ import (
 	"go-fiber-boilerplate/config"
 	"go-fiber-boilerplate/internal/models"
 	"go-fiber-boilerplate/internal/services"
+	"go-fiber-boilerplate/pkg/pagination"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -22,12 +23,18 @@ func NewSampleController(cfg *config.Config) *SampleHandler {
 }
 
 func (h *SampleHandler) GetSamples(c *fiber.Ctx) error {
-	page, _ := strconv.Atoi(c.Query("page", "1"))
-	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	queryParams := make(map[string]string)
+	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
+		queryParams[string(key)] = string(value)
+	})
 
-	samples, total, err := h.sampleService.GetSamples(page, limit)
+	params := pagination.NewParams(queryParams)
+
+	samples, meta, err := h.sampleService.GetSamples(params)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch samples"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch samples",
+		})
 	}
 
 	var responses []models.SampleResponse
@@ -37,11 +44,7 @@ func (h *SampleHandler) GetSamples(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"data": responses,
-		"pagination": fiber.Map{
-			"page":  page,
-			"limit": limit,
-			"total": total,
-		},
+		"meta": meta,
 	})
 }
 

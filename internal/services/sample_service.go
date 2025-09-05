@@ -6,11 +6,12 @@ import (
 	"go-fiber-boilerplate/config"
 	"go-fiber-boilerplate/database"
 	"go-fiber-boilerplate/internal/models"
+	"go-fiber-boilerplate/pkg/pagination"
 
 	"gorm.io/gorm"
 )
 
-type SampleService struct{
+type SampleService struct {
 	cfg *config.Config
 }
 
@@ -18,24 +19,43 @@ func NewSampleService(cfg *config.Config) *SampleService {
 	return &SampleService{cfg: cfg}
 }
 
-func (s *SampleService) GetSamples(page, limit int) ([]models.Sample, int64, error) {
+func (s *SampleService) GetSamples(params pagination.Params) ([]models.Sample, pagination.Meta, error) {
 	var samples []models.Sample
-	offset := (page - 1) * limit
+	var total int64
+
+	if err := database.GetDB().Model(&models.Sample{}).Count(&total).Error; err != nil {
+		return nil, pagination.Meta{}, err
+	}
+
+	if params.All {
+		if err := database.GetDB().
+			Preload("User").
+			Order(params.OrderClause("created_at")).
+			Find(&samples).Error; err != nil {
+			return nil, pagination.Meta{}, err
+		}
+
+		meta := pagination.Meta{
+			HasNext:     false,
+			HasPrevious: false,
+			Page:        1,
+			PerPage:     int(total),
+			Total:       total,
+		}
+		return samples, meta, nil
+	}
 
 	if err := database.GetDB().
 		Preload("User").
-		Offset(offset).
-		Limit(limit).
+		Offset(params.Offset()).
+		Limit(params.PerPage).
+		Order(params.OrderClause("created_at")).
 		Find(&samples).Error; err != nil {
-		return nil, 0, err
+		return nil, pagination.Meta{}, err
 	}
 
-	var total int64
-	if err := database.GetDB().Model(&models.Sample{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return samples, total, nil
+	meta := pagination.BuildMeta(total, params)
+	return samples, meta, nil
 }
 
 func (s *SampleService) GetSample(id int) (*models.Sample, error) {
