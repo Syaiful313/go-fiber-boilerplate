@@ -14,7 +14,7 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
 
-type Cloudinary struct {
+type CloudinaryService struct {
 	cld *cloudinary.Cloudinary
 	cfg *config.Config
 }
@@ -29,7 +29,7 @@ type UploadResult struct {
 	Bytes     int    `json:"bytes"`
 }
 
-func NewCloudinaryService(cfg *config.Config) (*Cloudinary, error) {
+func NewCloudinaryService(cfg *config.Config) (*CloudinaryService, error) {
 	if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
 		return nil, fmt.Errorf("cloudinary credentials are required")
 	}
@@ -43,13 +43,13 @@ func NewCloudinaryService(cfg *config.Config) (*Cloudinary, error) {
 		return nil, fmt.Errorf("failed to initialize cloudinary: %w", err)
 	}
 
-	return &Cloudinary{
+	return &CloudinaryService{
 		cld: cld,
 		cfg: cfg,
 	}, nil
 }
 
-func (s *Cloudinary) UploadImage(file *multipart.FileHeader, folder string) (*UploadResult, error) {
+func (s *CloudinaryService) UploadImage(file *multipart.FileHeader, folder string) (*UploadResult, error) {
 	if !s.isImageFile(file.Filename) {
 		return nil, fmt.Errorf("file must be an image (jpg, jpeg, png, gif, webp)")
 	}
@@ -93,7 +93,7 @@ func (s *Cloudinary) UploadImage(file *multipart.FileHeader, folder string) (*Up
 	}, nil
 }
 
-func (s *Cloudinary) DeleteImage(publicID string) error {
+func (s *CloudinaryService) DeleteImage(publicID string) error {
 	_, err := s.cld.Upload.Destroy(context.Background(), uploader.DestroyParams{
 		PublicID: publicID,
 	})
@@ -103,7 +103,7 @@ func (s *Cloudinary) DeleteImage(publicID string) error {
 	return nil
 }
 
-func (s *Cloudinary) GenerateURL(publicID string, size string) string {
+func (s *CloudinaryService) GenerateURL(publicID string, size string) string {
 	transformations := map[string]string{
 		"thumbnail": "w_150,h_150,c_thumb,f_auto,q_auto",
 		"small":     "w_300,f_auto,q_auto",
@@ -121,7 +121,7 @@ func (s *Cloudinary) GenerateURL(publicID string, size string) string {
 	return fmt.Sprintf("%s/%s/%s", baseURL, transform, publicID)
 }
 
-func (s *Cloudinary) GetImageVariants(publicID string) map[string]string {
+func (s *CloudinaryService) GetImageVariants(publicID string) map[string]string {
 	sizes := []string{"thumbnail", "small", "medium", "large", "original"}
 	variants := make(map[string]string)
 
@@ -132,7 +132,7 @@ func (s *Cloudinary) GetImageVariants(publicID string) map[string]string {
 	return variants
 }
 
-func (s *Cloudinary) isImageFile(filename string) bool {
+func (s *CloudinaryService) isImageFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	validExts := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 

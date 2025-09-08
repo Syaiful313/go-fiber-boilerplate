@@ -12,17 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
-type SampleHandler struct {
+type SampleController struct {
 	sampleService *services.SampleService
 }
 
-func NewSampleController(cfg *config.Config) *SampleHandler {
-	return &SampleHandler{
+func NewSampleController(cfg *config.Config) *SampleController {
+	return &SampleController{
 		sampleService: services.NewSampleService(cfg),
 	}
 }
 
-func (h *SampleHandler) GetSamples(c *fiber.Ctx) error {
+func (h *SampleController) GetSamples(c *fiber.Ctx) error {
 	queryParams := make(map[string]string)
 	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
 		queryParams[string(key)] = string(value)
@@ -48,13 +48,13 @@ func (h *SampleHandler) GetSamples(c *fiber.Ctx) error {
 	})
 }
 
-func (h *SampleHandler) GetSample(c *fiber.Ctx) error {
+func (h *SampleController) GetSampleById(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid sample ID"})
 	}
 
-	sample, err := h.sampleService.GetSample(id)
+	sample, err := h.sampleService.GetSampleById(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Sample not found"})
@@ -65,7 +65,7 @@ func (h *SampleHandler) GetSample(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": sample.ToResponse()})
 }
 
-func (h *SampleHandler) CreateSample(c *fiber.Ctx) error {
+func (h *SampleController) CreateSample(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
 
 	var req models.CreateSampleRequest
@@ -84,7 +84,7 @@ func (h *SampleHandler) CreateSample(c *fiber.Ctx) error {
 	})
 }
 
-func (h *SampleHandler) UpdateSample(c *fiber.Ctx) error {
+func (h *SampleController) UpdateSample(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -113,7 +113,7 @@ func (h *SampleHandler) UpdateSample(c *fiber.Ctx) error {
 	})
 }
 
-func (h *SampleHandler) DeleteSample(c *fiber.Ctx) error {
+func (h *SampleController) DeleteSample(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

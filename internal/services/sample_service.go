@@ -1,7 +1,7 @@
 package services
 
 import (
-	"errors"
+	"errors" 
 
 	"go-fiber-boilerplate/config"
 	"go-fiber-boilerplate/database"
@@ -58,7 +58,7 @@ func (s *SampleService) GetSamples(params pagination.Params) ([]models.Sample, p
 	return samples, meta, nil
 }
 
-func (s *SampleService) GetSample(id int) (*models.Sample, error) {
+func (s *SampleService) GetSampleById(id int) (*models.Sample, error) {
 	var sample models.Sample
 	if err := database.GetDB().
 		Preload("User").
