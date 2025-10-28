@@ -156,8 +156,8 @@ POST /auth/reset-password    # Reset password
 ```
 GET    /samples              # Get all samples (pagination)
 GET    /samples/:id          # Get sample by ID
-POST   /samples              # Create new sample
-PUT    /samples/:id          # Update sample
+POST   /samples              # Create new sample (JSON atau multipart)
+PATCH  /samples/:id          # Update sample (JSON atau multipart)
 DELETE /samples/:id          # Delete sample
 ```
 
@@ -194,6 +194,16 @@ curl -X POST http://localhost:8000/samples \
     "title": "Sample Title",
     "description": "Sample Description"
   }'
+```
+
+> Gunakan `multipart/form-data` jika ingin menyertakan gambar:
+
+```bash
+curl -X POST http://localhost:8000/samples \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "title=Sample Title" \
+  -F "description=Sample Description" \
+  -F "image=@/path/to/your-image.jpg"
 ```
 
 ### Forgot Password
