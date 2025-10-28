@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"strconv"
 
 	"go-fiber-boilerplate/config"
@@ -65,49 +66,69 @@ func (h *SampleController) GetSampleById(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": sample.ToResponse()})
 }
 
-func (h *SampleController) CreateSample(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+func (c *SampleController) CreateSample(ctx *fiber.Ctx) error {
+	userID := ctx.Locals("userID").(uint)
 
 	var req models.CreateSampleRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(400).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
 	}
 
-	sample, err := h.sampleService.CreateSample(userID, req)
+	// Get image file from form
+	imageFile, _ := ctx.FormFile("image")
+
+	sample, err := c.sampleService.CreateSample(userID, req, imageFile)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create sample"})
+		return ctx.Status(500).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+	return ctx.Status(201).JSON(fiber.Map{
 		"message": "Sample created successfully",
 		"data":    sample.ToResponse(),
 	})
 }
 
-func (h *SampleController) UpdateSample(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
-	id, err := strconv.Atoi(c.Params("id"))
+func (c *SampleController) UpdateSample(ctx *fiber.Ctx) error {
+	userID := ctx.Locals("userID").(uint)
+	id, err := ctx.ParamsInt("id")
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid sample ID"})
+		return ctx.Status(400).JSON(fiber.Map{
+			"error": "Invalid ID parameter",
+		})
 	}
 
 	var req models.UpdateSampleRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(400).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
 	}
 
-	sample, err := h.sampleService.UpdateSample(userID, id, req)
+	// Get image file from form
+	imageFile, _ := ctx.FormFile("image")
+
+	sample, err := c.sampleService.UpdateSample(userID, id, req, imageFile)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Sample not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ctx.Status(404).JSON(fiber.Map{
+				"error": "Sample not found",
+			})
 		}
 		if err.Error() == "forbidden" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "You can only update your own samples"})
+			return ctx.Status(403).JSON(fiber.Map{
+				"error": "You don't have permission to update this sample",
+			})
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Database error"})
+		return ctx.Status(500).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
-	return c.JSON(fiber.Map{
+	return ctx.JSON(fiber.Map{
 		"message": "Sample updated successfully",
 		"data":    sample.ToResponse(),
 	})

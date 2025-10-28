@@ -15,7 +15,13 @@ func SetupSampleRoutes(api fiber.Router, cfg *config.Config) {
 
 	samples.Get("/", sampleController.GetSamples)
 	samples.Get("/:id", middlewares.AuthMiddleware(cfg), sampleController.GetSampleById)
-	samples.Post("/", middlewares.AuthMiddleware(cfg), sampleController.CreateSample)
-	samples.Put("/:id", middlewares.AuthMiddleware(cfg), sampleController.UpdateSample)
+	samples.Post("/",
+		middlewares.AuthMiddleware(cfg),
+		middlewares.NewUploaderMiddleware().ImageUpload(2, []string{"image/jpeg", "image/png"}),
+		sampleController.CreateSample)
+	samples.Patch("/:id",
+		middlewares.AuthMiddleware(cfg),
+		middlewares.NewUploaderMiddleware().ImageUpload(2, []string{"image/jpeg", "image/png"}),
+		sampleController.UpdateSample)
 	samples.Delete("/:id", middlewares.AuthMiddleware(cfg), sampleController.DeleteSample)
 }

@@ -1,8 +1,10 @@
 package middlewares
 
 import (
+	"errors"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -18,6 +20,9 @@ func (u *UploaderMiddleware) Upload(maxSizeMB int) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		file, err := c.FormFile("image")
 		if err != nil {
+			if errors.Is(err, http.ErrMissingFile) {
+				return c.Next()
+			}
 			return c.Status(400).JSON(fiber.Map{
 				"error": "No file uploaded",
 			})
@@ -26,7 +31,7 @@ func (u *UploaderMiddleware) Upload(maxSizeMB int) fiber.Handler {
 		maxSize := int64(maxSizeMB * 1024 * 1024)
 		if file.Size > maxSize {
 			return c.Status(400).JSON(fiber.Map{
-				"error": "File too large (max " + string(rune(maxSizeMB)) + "MB)",
+				"error": "File too large (max " + strconv.Itoa(maxSizeMB) + "MB)",
 			})
 		}
 
@@ -39,6 +44,9 @@ func (u *UploaderMiddleware) FileFilter(allowedTypes []string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		file, err := c.FormFile("image")
 		if err != nil {
+			if errors.Is(err, http.ErrMissingFile) {
+				return c.Next()
+			}
 			return c.Status(400).JSON(fiber.Map{
 				"error": "No file uploaded",
 			})
@@ -121,6 +129,9 @@ func (u *UploaderMiddleware) ImageUpload(maxSizeMB int, allowedTypes []string) f
 	return func(c *fiber.Ctx) error {
 		file, err := c.FormFile("image")
 		if err != nil {
+			if errors.Is(err, http.ErrMissingFile) {
+				return c.Next()
+			}
 			return c.Status(400).JSON(fiber.Map{
 				"error": "No file uploaded",
 			})
@@ -129,7 +140,7 @@ func (u *UploaderMiddleware) ImageUpload(maxSizeMB int, allowedTypes []string) f
 		maxSize := int64(maxSizeMB * 1024 * 1024)
 		if file.Size > maxSize {
 			return c.Status(400).JSON(fiber.Map{
-				"error": "File too large (max " + string(rune(maxSizeMB)) + "MB)",
+				"error": "File too large (max " + strconv.Itoa(maxSizeMB) + "MB)",
 			})
 		}
 
