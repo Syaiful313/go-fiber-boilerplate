@@ -65,12 +65,25 @@ func (p Params) Offset() int {
 	return (p.Page - 1) * p.PerPage
 }
 
-func (p Params) OrderClause(defaultCol string) string {
-	col := p.SortBy
-	if col == "" {
-		col = defaultCol
+func (p Params) OrderClause(defaultCol string, allowedCols map[string]string) string {
+	col := strings.ToLower(defaultCol)
+	if allowedCols == nil {
+		allowedCols = map[string]string{col: col}
 	}
-	return fmt.Sprintf("%s %s", col, p.SortOrder)
+
+	sortBy := strings.ToLower(p.SortBy)
+	if mapped, ok := allowedCols[sortBy]; ok {
+		col = mapped
+	} else if mapped, ok := allowedCols[col]; ok {
+		col = mapped
+	}
+
+	order := DESC
+	if p.SortOrder == ASC {
+		order = ASC
+	}
+
+	return fmt.Sprintf("%s %s", col, order)
 }
 
 func BuildMeta(total int64, p Params) Meta {

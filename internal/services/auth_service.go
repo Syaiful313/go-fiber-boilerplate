@@ -3,6 +3,8 @@ package services
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"go-fiber-boilerplate/config"
 	"go-fiber-boilerplate/database"
 	"go-fiber-boilerplate/internal/models"
@@ -96,12 +98,25 @@ func (s *AuthService) ForgotPassword(email string) error {
 		return errors.New("database error")
 	}
 
-	resetToken, err := utils.GenerateResetPasswordToken(fmt.Sprintf("%d", user.ID), user.Email, s.cfg.JWTSecret)
+	resetTokenValue, tokenHash, err := utils.GenerateResetToken(s.cfg.ResetTokenSecret)
 	if err != nil {
 		return errors.New("failed to generate reset token")
 	}
 
-	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.cfg.FrontendURL, resetToken)
+	// Invalidate previous tokens for this user
+	database.GetDB().Where("user_id = ?", user.ID).Delete(&models.PasswordResetToken{})
+
+	tokenRecord := models.PasswordResetToken{
+		UserID:    user.ID,
+		TokenHash: tokenHash,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	if err := database.GetDB().Create(&tokenRecord).Error; err != nil {
+		return errors.New("failed to generate reset token")
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.cfg.FrontendURL, resetTokenValue)
 
 	emailConfig := utils.EmailConfig{
 		SMTPHost:     s.cfg.SMTPHost,
@@ -134,15 +149,26 @@ func (s *AuthService) ResetPassword(token, newPassword string) error {
 		return errors.New("password must be at least 6 characters long")
 	}
 
-	claims, err := utils.ValidateResetPasswordToken(token, s.cfg.JWTSecret)
+	rawToken, err := utils.VerifyResetToken(token, s.cfg.ResetTokenSecret)
 	if err != nil {
 		return errors.New("invalid or expired reset token")
 	}
 
+	tokenHash := utils.HashResetToken(rawToken)
+
+	var resetRecord models.PasswordResetToken
+	if err := database.GetDB().Where("token_hash = ?", tokenHash).First(&resetRecord).Error; err != nil {
+		return errors.New("invalid or expired reset token")
+	}
+
+	if resetRecord.Used || resetRecord.ExpiresAt.Before(time.Now()) {
+		return errors.New("invalid or expired reset token")
+	}
+
 	var user models.User
-	if err := database.GetDB().Where("id = ? AND email = ?", claims.UserID, claims.Email).First(&user).Error; err != nil {
+	if err := database.GetDB().Where("id = ?", resetRecord.UserID).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return errors.New("user not found")
+			return errors.New("invalid or expired reset token")
 		}
 		return errors.New("database error")
 	}
@@ -154,6 +180,10 @@ func (s *AuthService) ResetPassword(token, newPassword string) error {
 
 	if err := database.GetDB().Model(&user).Update("password", hashedPassword).Error; err != nil {
 		return errors.New("failed to update password")
+	}
+
+	if err := database.GetDB().Model(&resetRecord).Update("used", true).Error; err != nil {
+		return errors.New("failed to update reset token")
 	}
 
 	emailConfig := utils.EmailConfig{

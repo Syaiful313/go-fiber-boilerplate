@@ -1,63 +1,50 @@
 package utils
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
+	"errors"
+	"strings"
 )
 
-type ResetTokenClaims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Type   string `json:"type"` // "reset_password"
-	jwt.RegisteredClaims
-}
+const resetTokenLength = 32
 
-// GenerateResetPasswordToken generates a JWT token for password reset
-func GenerateResetPasswordToken(userID, email, secretKey string) (string, error) {
-	claims := ResetTokenClaims{
-		UserID: userID,
-		Email:  email,
-		Type:   "reset_password",
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)), // 1 hour expiry
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secretKey))
-}
-
-// ValidateResetPasswordToken validates and parses a reset password token
-func ValidateResetPasswordToken(tokenString, secretKey string) (*ResetTokenClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &ResetTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secretKey), nil
-	})
-
+// GenerateResetToken generates a random token, returns the signed token for clients and its hash for storage.
+func GenerateResetToken(secret string) (signedToken string, tokenHash string, err error) {
+	rawToken, err := GenerateRandomToken(resetTokenLength)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	if claims, ok := token.Claims.(*ResetTokenClaims); ok && token.Valid {
-		// Check if token type is correct
-		if claims.Type != "reset_password" {
-			return nil, fmt.Errorf("invalid token type")
-		}
-		return claims, nil
-	}
-
-	return nil, fmt.Errorf("invalid token")
+	signature := signToken(rawToken, secret)
+	signedToken = rawToken + "." + signature
+	tokenHash = hashToken(rawToken)
+	return signedToken, tokenHash, nil
 }
 
-// GenerateRandomToken generates a random token for additional security
+// VerifyResetToken verifies the signature and returns the raw token part.
+func VerifyResetToken(signedToken, secret string) (string, error) {
+	parts := strings.Split(signedToken, ".")
+	if len(parts) != 2 {
+		return "", errors.New("invalid token format")
+	}
+
+	expected := signToken(parts[0], secret)
+	if !hmac.Equal([]byte(expected), []byte(parts[1])) {
+		return "", errors.New("invalid token signature")
+	}
+
+	return parts[0], nil
+}
+
+// HashResetToken hashes the raw token for safe persistence.
+func HashResetToken(rawToken string) string {
+	return hashToken(rawToken)
+}
+
+// GenerateRandomToken returns a random hex-encoded string of the given byte length.
 func GenerateRandomToken(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
@@ -66,3 +53,13 @@ func GenerateRandomToken(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+func signToken(token, secret string) string {
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte(token))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}

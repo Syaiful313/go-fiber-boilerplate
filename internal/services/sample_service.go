@@ -18,6 +18,13 @@ type SampleService struct {
 	cloudinaryService *CloudinaryService
 }
 
+var sampleSortableColumns = map[string]string{
+	"created_at": "created_at",
+	"updated_at": "updated_at",
+	"title":      "title",
+	"id":         "id",
+}
+
 func NewSampleService(cfg *config.Config) *SampleService {
 	cloudinaryService, err := NewCloudinaryService(cfg)
 	if err != nil {
@@ -40,7 +47,7 @@ func (s *SampleService) GetSamples(params pagination.Params) ([]models.Sample, p
 	if params.All {
 		if err := database.GetDB().
 			Preload("User").
-			Order(params.OrderClause("created_at")).
+			Order(params.OrderClause("created_at", sampleSortableColumns)).
 			Find(&samples).Error; err != nil {
 			return nil, pagination.Meta{}, err
 		}
@@ -59,7 +66,7 @@ func (s *SampleService) GetSamples(params pagination.Params) ([]models.Sample, p
 		Preload("User").
 		Offset(params.Offset()).
 		Limit(params.PerPage).
-		Order(params.OrderClause("created_at")).
+		Order(params.OrderClause("created_at", sampleSortableColumns)).
 		Find(&samples).Error; err != nil {
 		return nil, pagination.Meta{}, err
 	}

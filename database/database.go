@@ -32,6 +32,7 @@ func ConnectDB(cfg *config.Config) {
 	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Sample{},
+		&models.PasswordResetToken{},
 	)
 
 	if err != nil {
