@@ -7,10 +7,10 @@ Template RESTful API menggunakan Go Fiber dengan fitur lengkap untuk pengembanga
 - 🚀 **Go Fiber** - Framework web yang cepat dan minimalis
 - 🗄️ **GORM** - ORM yang powerful untuk Go
 - 🐘 **PostgreSQL** - Database relasional dengan Docker support
-- 🔐 **JWT Authentication** - Sistem autentikasi yang aman dengan refresh token
+- 🔐 **JWT Authentication** - Autentikasi bearer token dengan expired 24 jam
 - 🔒 **Password Security** - Hashing menggunakan bcrypt
-- 📧 **Email System** - Forgot password dengan SMTP
-- 📁 **File Upload** - Upload gambar ke Cloudinary
+- 📧 **Email System** - Forgot/reset password via SMTP
+- 📁 **File Upload** - Upload gambar ke Cloudinary (dengan pembersihan aset lama)
 - 🛡️ **Middleware** - CORS, Authentication, Error Handling, File Upload
 - 🐳 **Docker Ready** - Development dengan Docker Compose
 - 🔄 **Hot Reload** - Development dengan Air
@@ -71,18 +71,21 @@ go-fiber-boilerplate/
 ### Installation
 
 1. **Clone repository:**
+
    ```bash
    git clone <repository-url>
    cd go-fiber-boilerplate
    ```
 
 2. **Setup environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env dengan konfigurasi Anda
    ```
 
 3. **Start database:**
+
    ```bash
    make docker-up
    # atau
@@ -90,6 +93,7 @@ go-fiber-boilerplate/
    ```
 
 4. **Install dependencies:**
+
    ```bash
    go mod download
    ```
@@ -116,9 +120,10 @@ DB_NAME=go_fiber_db
 # Server
 PORT=8000
 JWT_SECRET=your_jwt_secret_key_here
+RESET_TOKEN_SECRET=your_reset_token_secret_here
 
 # CORS
-CORS_ALLOWED_ORIGINS=*
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 CORS_ALLOW_CREDENTIALS=false
 
 # Email (SMTP)
@@ -140,11 +145,13 @@ CLOUDINARY_API_SECRET=your_api_secret
 ## 📋 API Endpoints
 
 ### Health Check
+
 ```
 GET /api/health
 ```
 
 ### Authentication
+
 ```
 POST /auth/register          # Register user baru
 POST /auth/login             # Login user
@@ -152,18 +159,20 @@ POST /auth/forgot-password   # Forgot password
 POST /auth/reset-password    # Reset password
 ```
 
-### Samples (Protected)
+### Samples
+
 ```
-GET    /samples              # Get all samples (pagination)
-GET    /samples/:id          # Get sample by ID
-POST   /samples              # Create new sample (JSON atau multipart)
-PATCH  /samples/:id          # Update sample (JSON atau multipart)
-DELETE /samples/:id          # Delete sample
+GET    /samples              # Publik, daftar sample (pagination, max 50 per halaman, tanpa data user sensitif)
+GET    /samples/:id          # Dilindungi, detail sample beserta data user
+POST   /samples              # Dilindungi, create sample (JSON atau multipart)
+PATCH  /samples/:id          # Dilindungi, update sample (JSON atau multipart)
+DELETE /samples/:id          # Dilindungi, delete sample (hapus gambar Cloudinary bila ada)
 ```
 
 ## 📝 Request Examples
 
 ### Register User
+
 ```bash
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
@@ -176,6 +185,7 @@ curl -X POST http://localhost:8000/auth/register \
 ```
 
 ### Login
+
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
@@ -186,6 +196,7 @@ curl -X POST http://localhost:8000/auth/login \
 ```
 
 ### Create Sample (dengan token)
+
 ```bash
 curl -X POST http://localhost:8000/samples \
   -H "Content-Type: application/json" \
@@ -207,6 +218,7 @@ curl -X POST http://localhost:8000/samples \
 ```
 
 ### Forgot Password
+
 ```bash
 curl -X POST http://localhost:8000/auth/forgot-password \
   -H "Content-Type: application/json" \
@@ -216,6 +228,7 @@ curl -X POST http://localhost:8000/auth/forgot-password \
 ```
 
 ### Reset Password
+
 ```bash
 curl -X POST http://localhost:8000/auth/reset-password \
   -H "Content-Type: application/json" \
@@ -256,30 +269,35 @@ make setup
 ## 🔧 Features Detail
 
 ### Authentication System
+
 - JWT-based authentication
 - Password hashing dengan bcrypt
 - Email verification untuk forgot password
 - Reset password dengan secure token
 
 ### File Upload System
+
 - Upload gambar ke Cloudinary
-- Validasi file type dan size
+- Validasi file type dan size (JPEG/PNG, batas ukuran dari middleware)
 - Multiple image variants (thumbnail, small, medium, large)
-- Secure file handling
+- Secure file handling dan penghapusan aset lama saat update/delete sample
 
 ### Database Features
+
 - Auto migration
 - Soft delete support
 - Relationship management
-- Pagination support
+- Pagination support (perPage dibatasi, tidak ada mode `all`)
 
 ### Middleware
+
 - **CORS**: Configurable cross-origin resource sharing
 - **Auth**: JWT token validation
 - **Error**: Centralized error handling
 - **Upload**: File upload validation dan processing
 
 ### Email System
+
 - SMTP support dengan template HTML
 - Forgot password email
 - Password reset confirmation email
@@ -291,7 +309,7 @@ Development environment dengan PostgreSQL dan Adminer:
 ```yaml
 # docker-compose.yml menyediakan:
 - PostgreSQL database (port 5432)
-- PostgreSQL test database (port 5433) 
+- PostgreSQL test database (port 5433)
 - Adminer web interface (port 8080)
 ```
 
@@ -340,6 +358,7 @@ Template ini merupakan equivalent dari Express.js boilerplate dengan keuntungan:
 - Security headers
 - Database connection pooling
 - Graceful shutdown handling
+- Pagination dan listing publik dibatasi untuk mencegah data dump; data user sensitif tidak dikirim di endpoint publik
 
 ## 📄 Response Format
 
@@ -355,6 +374,7 @@ API menggunakan consistent response format:
 ```
 
 Error responses:
+
 ```json
 {
   "error": "Error message"

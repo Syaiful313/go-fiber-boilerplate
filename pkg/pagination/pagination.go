@@ -29,6 +29,8 @@ type Meta struct {
 	Total       int64 `json:"total"`
 }
 
+const maxPerPage = 50
+
 func NewParams(q map[string]string) Params {
 	toInt := func(s string, def int) int {
 		if v, err := strconv.Atoi(s); err == nil && v > 0 {
@@ -39,6 +41,9 @@ func NewParams(q map[string]string) Params {
 
 	page := toInt(q["page"], 1)
 	per := toInt(q["perPage"], 10)
+	if per > maxPerPage {
+		per = maxPerPage
+	}
 	sortBy := q["sortBy"]
 	if sortBy == "" {
 		sortBy = "created_at"
@@ -47,7 +52,7 @@ func NewParams(q map[string]string) Params {
 	if order != ASC {
 		order = DESC
 	}
-	all := strings.ToLower(q["all"]) == "true"
+	all := false // explicit disable to prevent unbounded fetches
 
 	return Params{
 		Page:      page,

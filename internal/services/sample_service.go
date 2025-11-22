@@ -44,24 +44,6 @@ func (s *SampleService) GetSamples(params pagination.Params) ([]models.Sample, p
 		return nil, pagination.Meta{}, err
 	}
 
-	if params.All {
-		if err := database.GetDB().
-			Preload("User").
-			Order(params.OrderClause("created_at", sampleSortableColumns)).
-			Find(&samples).Error; err != nil {
-			return nil, pagination.Meta{}, err
-		}
-
-		meta := pagination.Meta{
-			HasNext:     false,
-			HasPrevious: false,
-			Page:        1,
-			PerPage:     int(total),
-			Total:       total,
-		}
-		return samples, meta, nil
-	}
-
 	if err := database.GetDB().
 		Preload("User").
 		Offset(params.Offset()).
@@ -159,7 +141,9 @@ func (s *SampleService) UpdateSample(userID uint, id int, req models.UpdateSampl
 
 	// Delete old image if new one was uploaded successfully
 	if imageFile != nil && oldImagePublicID != "" && s.cloudinaryService != nil {
-		s.cloudinaryService.DeleteImage(oldImagePublicID)
+		if err := s.cloudinaryService.DeleteImage(oldImagePublicID); err != nil {
+			log.Printf("warning: failed to delete old image %s: %v", oldImagePublicID, err)
+		}
 	}
 
 	database.GetDB().Preload("User").First(&sample, sample.ID)
@@ -177,6 +161,12 @@ func (s *SampleService) DeleteSample(userID uint, id int) error {
 
 	if sample.UserID != userID {
 		return errors.New("forbidden")
+	}
+
+	if sample.ImagePublicID != "" && s.cloudinaryService != nil {
+		if err := s.cloudinaryService.DeleteImage(sample.ImagePublicID); err != nil {
+			log.Printf("warning: failed to delete cloudinary image %s: %v", sample.ImagePublicID, err)
+		}
 	}
 
 	if err := database.GetDB().Delete(&sample).Error; err != nil {

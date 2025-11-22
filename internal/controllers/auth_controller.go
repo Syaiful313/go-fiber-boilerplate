@@ -54,7 +54,7 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 	response, err := ctrl.authService.Login(req)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": "Invalid credentials",
 		})
 	}
 
@@ -79,13 +79,8 @@ func (ctrl *AuthController) ForgotPassword(c *fiber.Ctx) error {
 				"error": err.Error(),
 			})
 		}
-		if err.Error() == "failed to send reset email" {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Database error",
+			"error": "Unable to process request",
 		})
 	}
 

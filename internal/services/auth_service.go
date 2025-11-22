@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"go-fiber-boilerplate/config"
@@ -57,7 +58,8 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		if err == gorm.ErrRecordNotFound {
 			return nil, errors.New("invalid credentials")
 		}
-		return nil, errors.New("database error")
+		log.Printf("login database error for %s: %v", req.Email, err)
+		return nil, errors.New("invalid credentials")
 	}
 
 	if !utils.CheckPassword(req.Password, user.Password) {
@@ -65,12 +67,14 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 	}
 
 	if !user.IsActive {
-		return nil, errors.New("account is deactivated")
+		log.Printf("login blocked for inactive account: %s", user.Email)
+		return nil, errors.New("invalid credentials")
 	}
 
 	token, err := utils.GenerateJWT(user.ID, user.Email, s.cfg.JWTSecret)
 	if err != nil {
-		return nil, err
+		log.Printf("login token generation failed for %s: %v", user.Email, err)
+		return nil, errors.New("invalid credentials")
 	}
 
 	return &models.LoginResponse{

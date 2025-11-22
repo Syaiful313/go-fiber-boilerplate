@@ -19,7 +19,6 @@ type Sample struct {
 	DeletedAt     gorm.DeletedAt `json:"deletedAt,omitempty" gorm:"index"`
 }
 
-
 type SampleResponse struct {
 	ID          uint         `json:"id"`
 	Title       string       `json:"title"`
@@ -31,6 +30,16 @@ type SampleResponse struct {
 	UpdatedAt   time.Time    `json:"updatedAt"`
 }
 
+type SamplePublicResponse struct {
+	ID          uint      `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	ImageURL    string    `json:"imageUrl"`
+	UserID      uint      `json:"userId"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
 type CreateSampleRequest struct {
 	Title       string `json:"title" validate:"required"`
 	Description string `json:"description"`
@@ -40,7 +49,6 @@ type UpdateSampleRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
-
 
 func (s *Sample) ToResponse() SampleResponse {
 	return SampleResponse{
@@ -55,3 +63,14 @@ func (s *Sample) ToResponse() SampleResponse {
 	}
 }
 
+func (s *Sample) ToPublicResponse() SamplePublicResponse {
+	return SamplePublicResponse{
+		ID:          s.ID,
+		Title:       s.Title,
+		Description: s.Description,
+		ImageURL:    s.ImageURL,
+		UserID:      s.UserID,
+		CreatedAt:   s.CreatedAt,
+		UpdatedAt:   s.UpdatedAt,
+	}
+}

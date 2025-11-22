@@ -38,9 +38,9 @@ func (h *SampleController) GetSamples(c *fiber.Ctx) error {
 		})
 	}
 
-	var responses []models.SampleResponse
+	var responses []models.SamplePublicResponse
 	for _, sample := range samples {
-		responses = append(responses, sample.ToResponse())
+		responses = append(responses, sample.ToPublicResponse())
 	}
 
 	return c.JSON(fiber.Map{
@@ -82,7 +82,7 @@ func (c *SampleController) CreateSample(ctx *fiber.Ctx) error {
 	sample, err := c.sampleService.CreateSample(userID, req, imageFile)
 	if err != nil {
 		return ctx.Status(500).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": "Failed to create sample",
 		})
 	}
 
@@ -124,7 +124,7 @@ func (c *SampleController) UpdateSample(ctx *fiber.Ctx) error {
 			})
 		}
 		return ctx.Status(500).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": "Failed to update sample",
 		})
 	}
 
