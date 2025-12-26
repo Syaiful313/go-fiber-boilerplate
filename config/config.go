@@ -18,6 +18,8 @@ type Config struct {
 	DBName              string
 	Port                string
 	JWTSecret           string
+	JWTIssuer           string
+	JWTAudience         string
 	ResetTokenSecret    string
 	AllowedOrigins      string
 	AllowCredentials    bool
@@ -61,6 +63,8 @@ func LoadConfig() (*Config, error) {
 	if cfg.JWTSecret, err = getRequiredEnv("JWT_SECRET"); err != nil {
 		return nil, err
 	}
+	cfg.JWTIssuer = os.Getenv("JWT_ISSUER")
+	cfg.JWTAudience = os.Getenv("JWT_AUDIENCE")
 	if cfg.ResetTokenSecret, err = getRequiredEnv("RESET_TOKEN_SECRET"); err != nil {
 		return nil, err
 	}

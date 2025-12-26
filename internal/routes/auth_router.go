@@ -31,5 +31,7 @@ func SetupAuthRoutes(api fiber.Router, cfg *config.Config) {
 		middlewares.RateLimitMiddleware(5, time.Minute, keyGen),
 		authController.ForgotPassword)
 
-	auth.Post("/reset-password", authController.ResetPassword)
+	auth.Post("/reset-password",
+		middlewares.RateLimitMiddleware(5, time.Minute, keyGen),
+		authController.ResetPassword)
 }

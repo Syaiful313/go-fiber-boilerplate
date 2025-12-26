@@ -29,7 +29,7 @@ func AuthMiddleware(cfg *config.Config) fiber.Handler {
 		}
 
 		token := tokenParts[1]
-		claims, err := utils.ValidateJWT(token, cfg.JWTSecret)
+		claims, err := utils.ValidateJWT(token, cfg.JWTSecret, cfg.JWTIssuer, cfg.JWTAudience)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "Invalid token",

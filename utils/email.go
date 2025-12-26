@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/mail"
 	"net/smtp"
 	"strings"
 )
@@ -21,21 +24,67 @@ type EmailData struct {
 }
 
 func SendEmail(config EmailConfig, emailData EmailData) error {
+	if !ValidateEmail(emailData.To) || !ValidateEmail(config.FromEmail) {
+		return fmt.Errorf("invalid email address")
+	}
+
+	toAddr, _ := mail.ParseAddress(emailData.To)
+	fromAddr, _ := mail.ParseAddress(config.FromEmail)
+
+	if err := rejectHeaderInjection(emailData.Subject); err != nil {
+		return err
+	}
+
 	// Setup authentication
 	auth := smtp.PlainAuth("", config.SMTPUsername, config.SMTPPassword, config.SMTPHost)
 
 	// Compose the email
-	to := []string{emailData.To}
 	msg := []byte(fmt.Sprintf("To: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		emailData.To, emailData.Subject, emailData.Body))
+		toAddr.Address, emailData.Subject, emailData.Body))
 
-	// Send the email
-	err := smtp.SendMail(config.SMTPHost+":"+config.SMTPPort, auth, config.FromEmail, to, msg)
-	if err != nil {
-		return fmt.Errorf("failed to send email: %v", err)
+	addr := net.JoinHostPort(config.SMTPHost, config.SMTPPort)
+	tlsConfig := &tls.Config{
+		ServerName: config.SMTPHost,
+		MinVersion: tls.VersionTLS12,
 	}
 
-	return nil
+	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	if err != nil {
+		return fmt.Errorf("failed to establish TLS connection: %v", err)
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, config.SMTPHost)
+	if err != nil {
+		return fmt.Errorf("failed to create SMTP client: %v", err)
+	}
+	defer client.Close()
+
+	if err := client.Auth(auth); err != nil {
+		return fmt.Errorf("smtp auth failed: %v", err)
+	}
+
+	if err := client.Mail(fromAddr.Address); err != nil {
+		return fmt.Errorf("failed to set sender: %v", err)
+	}
+	if err := client.Rcpt(toAddr.Address); err != nil {
+		return fmt.Errorf("failed to set recipient: %v", err)
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to start data command: %v", err)
+	}
+
+	if _, err := writer.Write(msg); err != nil {
+		return fmt.Errorf("failed to write email body: %v", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to finalize email: %v", err)
+	}
+
+	return client.Quit()
 }
 
 func GenerateResetPasswordEmail(resetLink string) string {
@@ -65,6 +114,16 @@ func GeneratePasswordResetSuccessEmail() string {
 }
 
 func ValidateEmail(email string) bool {
-	return strings.Contains(email, "@") && strings.Contains(email, ".")
+	if strings.ContainsAny(email, "\r\n") {
+		return false
+	}
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }
 
+func rejectHeaderInjection(value string) error {
+	if strings.ContainsAny(value, "\r\n") {
+		return fmt.Errorf("invalid header value")
+	}
+	return nil
+}

@@ -28,13 +28,19 @@ func (ctrl *AuthController) Register(c *fiber.Ctx) error {
 
 	response, err := ctrl.authService.Register(req)
 	if err != nil {
-		status := fiber.StatusBadRequest
-		if err.Error() != "user with this email already exists" {
-			status = fiber.StatusInternalServerError
+		switch err.Error() {
+		case "user with this email already exists",
+			"all fields are required",
+			"invalid email format",
+			"password must include upper, lower, number, special and be at least 8 characters":
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Unable to process registration",
+			})
 		}
-		return c.Status(status).JSON(fiber.Map{
-			"error": "Unable to process registration",
-		})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -53,9 +59,16 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 
 	response, err := ctrl.authService.Login(req)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid credentials",
-		})
+		switch err.Error() {
+		case "email and password are required", "invalid email format":
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		default:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Invalid credentials",
+			})
+		}
 	}
 
 	return c.JSON(fiber.Map{
@@ -100,7 +113,7 @@ func (ctrl *AuthController) ResetPassword(c *fiber.Ctx) error {
 	err := ctrl.authService.ResetPassword(req.Token, req.NewPassword)
 	if err != nil {
 		switch err.Error() {
-		case "token and new password are required", "password must be at least 6 characters long":
+		case "token and new password are required", "password must include upper, lower, number, special and be at least 8 characters":
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": err.Error(),
 			})

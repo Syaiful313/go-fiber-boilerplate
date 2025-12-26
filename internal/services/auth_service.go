@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"go-fiber-boilerplate/config"
@@ -12,6 +13,7 @@ import (
 	"go-fiber-boilerplate/utils"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AuthService struct {
@@ -23,6 +25,9 @@ func NewAuthService(cfg *config.Config) *AuthService {
 }
 
 func (s *AuthService) Register(req models.CreateUserRequest) (*models.RegisterResponse, error) {
+	if err := validateRegisterRequest(req); err != nil {
+		return nil, err
+	}
 
 	var existingUser models.User
 	if err := database.GetDB().Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
@@ -52,6 +57,9 @@ func (s *AuthService) Register(req models.CreateUserRequest) (*models.RegisterRe
 }
 
 func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, error) {
+	if err := validateLoginRequest(req); err != nil {
+		return nil, err
+	}
 
 	var user models.User
 	if err := database.GetDB().Where("email = ?", req.Email).First(&user).Error; err != nil {
@@ -71,7 +79,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		return nil, errors.New("invalid credentials")
 	}
 
-	token, err := utils.GenerateJWT(user.ID, user.Email, s.cfg.JWTSecret)
+	token, err := utils.GenerateJWT(user.ID, user.Email, s.cfg.JWTSecret, s.cfg.JWTIssuer, s.cfg.JWTAudience)
 	if err != nil {
 		log.Printf("login token generation failed for %s: %v", user.Email, err)
 		return nil, errors.New("invalid credentials")
@@ -84,7 +92,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 }
 
 func (s *AuthService) ForgotPassword(email string) error {
-
+	email = strings.TrimSpace(email)
 	if email == "" {
 		return errors.New("email is required")
 	}
@@ -149,8 +157,8 @@ func (s *AuthService) ResetPassword(token, newPassword string) error {
 		return errors.New("token and new password are required")
 	}
 
-	if len(newPassword) < 6 {
-		return errors.New("password must be at least 6 characters long")
+	if !utils.ValidatePassword(newPassword) {
+		return errors.New("password must include upper, lower, number, special and be at least 8 characters")
 	}
 
 	rawToken, err := utils.VerifyResetToken(token, s.cfg.ResetTokenSecret)
@@ -160,51 +168,84 @@ func (s *AuthService) ResetPassword(token, newPassword string) error {
 
 	tokenHash := utils.HashResetToken(rawToken)
 
-	var resetRecord models.PasswordResetToken
-	if err := database.GetDB().Where("token_hash = ?", tokenHash).First(&resetRecord).Error; err != nil {
-		return errors.New("invalid or expired reset token")
-	}
-
-	if resetRecord.Used || resetRecord.ExpiresAt.Before(time.Now()) {
-		return errors.New("invalid or expired reset token")
-	}
-
-	var user models.User
-	if err := database.GetDB().Where("id = ?", resetRecord.UserID).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	return database.GetDB().Transaction(func(tx *gorm.DB) error {
+		var resetRecord models.PasswordResetToken
+		if err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("token_hash = ?", tokenHash).
+			First(&resetRecord).Error; err != nil {
 			return errors.New("invalid or expired reset token")
 		}
-		return errors.New("database error")
+
+		if resetRecord.Used || resetRecord.ExpiresAt.Before(time.Now()) {
+			return errors.New("invalid or expired reset token")
+		}
+
+		var user models.User
+		if err := tx.Where("id = ?", resetRecord.UserID).First(&user).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return errors.New("invalid or expired reset token")
+			}
+			return errors.New("database error")
+		}
+
+		hashedPassword, err := utils.HashPassword(newPassword)
+		if err != nil {
+			return errors.New("failed to hash password")
+		}
+
+		if err := tx.Model(&user).Update("password", hashedPassword).Error; err != nil {
+			return errors.New("failed to update password")
+		}
+
+		if err := tx.Model(&resetRecord).Update("used", true).Error; err != nil {
+			return errors.New("failed to update reset token")
+		}
+
+		emailConfig := utils.EmailConfig{
+			SMTPHost:     s.cfg.SMTPHost,
+			SMTPPort:     s.cfg.SMTPPort,
+			SMTPUsername: s.cfg.SMTPUsername,
+			SMTPPassword: s.cfg.SMTPPassword,
+			FromEmail:    s.cfg.FromEmail,
+		}
+
+		emailData := utils.EmailData{
+			To:      user.Email,
+			Subject: "Password Reset Successful",
+			Body:    utils.GeneratePasswordResetSuccessEmail(),
+		}
+
+		utils.SendEmail(emailConfig, emailData)
+
+		return nil
+	})
+}
+
+func validateRegisterRequest(req models.CreateUserRequest) error {
+	req.Email = strings.TrimSpace(req.Email)
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+
+	if req.Email == "" || req.FirstName == "" || req.LastName == "" {
+		return errors.New("all fields are required")
 	}
-
-	hashedPassword, err := utils.HashPassword(newPassword)
-	if err != nil {
-		return errors.New("failed to hash password")
+	if !utils.ValidateEmail(req.Email) {
+		return errors.New("invalid email format")
 	}
-
-	if err := database.GetDB().Model(&user).Update("password", hashedPassword).Error; err != nil {
-		return errors.New("failed to update password")
+	if !utils.ValidatePassword(req.Password) {
+		return errors.New("password must include upper, lower, number, special and be at least 8 characters")
 	}
+	return nil
+}
 
-	if err := database.GetDB().Model(&resetRecord).Update("used", true).Error; err != nil {
-		return errors.New("failed to update reset token")
+func validateLoginRequest(req models.LoginRequest) error {
+	req.Email = strings.TrimSpace(req.Email)
+	if req.Email == "" || req.Password == "" {
+		return errors.New("email and password are required")
 	}
-
-	emailConfig := utils.EmailConfig{
-		SMTPHost:     s.cfg.SMTPHost,
-		SMTPPort:     s.cfg.SMTPPort,
-		SMTPUsername: s.cfg.SMTPUsername,
-		SMTPPassword: s.cfg.SMTPPassword,
-		FromEmail:    s.cfg.FromEmail,
+	if !utils.ValidateEmail(req.Email) {
+		return errors.New("invalid email format")
 	}
-
-	emailData := utils.EmailData{
-		To:      user.Email,
-		Subject: "Password Reset Successful",
-		Body:    utils.GeneratePasswordResetSuccessEmail(),
-	}
-
-	utils.SendEmail(emailConfig, emailData)
-
 	return nil
 }

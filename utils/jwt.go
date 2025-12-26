@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,7 +13,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(userID uint, email, secret string) (string, error) {
+func GenerateJWT(userID uint, email, secret, issuer, audience string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
 		Email:  email,
@@ -22,14 +23,24 @@ func GenerateJWT(userID uint, email, secret string) (string, error) {
 		},
 	}
 
+	if issuer != "" {
+		claims.Issuer = issuer
+	}
+	if audience != "" {
+		claims.Audience = jwt.ClaimStrings{audience}
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
 }
 
-func ValidateJWT(tokenString, secret string) (*Claims, error) {
+func ValidateJWT(tokenString, secret, issuer, audience string) (*Claims, error) {
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
 		return []byte(secret), nil
 	})
 
@@ -41,6 +52,21 @@ func ValidateJWT(tokenString, secret string) (*Claims, error) {
 		return nil, jwt.ErrSignatureInvalid
 	}
 
+	if issuer != "" && claims.Issuer != issuer {
+		return nil, errors.New("invalid token issuer")
+	}
+	if audience != "" {
+		ok := false
+		for _, aud := range claims.Audience {
+			if aud == audience {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return nil, errors.New("invalid token audience")
+		}
+	}
+
 	return claims, nil
 }
-
